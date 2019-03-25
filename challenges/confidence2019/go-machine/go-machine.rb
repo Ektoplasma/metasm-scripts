@@ -1,6 +1,12 @@
 #!/usr/bin/env ruby
 # encoding: ASCII-8BIT
 
+# Script for go-machine binary from reverse challenge of Teaser Confidence CTF 2019
+# Inspired from DeliciousHorse solving script:
+# https://github.com/DeliciousHorse/writeups/blob/master/TeaserConfidence2019/GoMachine/dump_vm_trace.py
+# Just an attempt to do the same thing with Metasm
+
+
 require 'metasm'
 include Metasm
 require 'pp'
@@ -16,6 +22,14 @@ def showGui
     Gui.main
 end
 
+def get_imm(start, stop)
+    ip = @dbg.get_reg_value("rax")
+    bytecode = @dbg.get_reg_value("rbx")
+    val = @dbg.memory[bytecode+ip+start, stop-start]
+    #TODO: test conversion value
+    val.to_i().to_s(16)
+end
+
 def dumpHandlers
     stack_p = @dbg.get_reg_value("rsp")
     handler_str = @dbg.memory[stack_p + 0x48,16]
@@ -27,7 +41,55 @@ def dumpHandlers
     puts "handlet_str:\t#{handler_str}"
     puts "index:\t#{index}"
 
-    #ajouter switch case des handlers 
+	#stck_dmp = dump_stack()
+    decoded = ''
+    case index
+	when 0
+		decoded += "sub\t"
+    when 1
+		decoded += "add\t"
+    when 2
+		decoded += "neg\t"
+    when 3
+		decoded += "mul\t"
+    when 4
+		decoded += "mod\t"
+    when 5
+		decoded += "push "
+		num = get_imm(1, 0x15)
+		decoded += "(" + num + ")\t"
+    when 6
+		decoded += "pop(ignore)\t"
+    when 7
+		decoded += "read_input\t"
+    when 8
+		decoded += "print_output\t"
+    when 9
+		decoded = "dup\t"
+    when 0xA
+		decoded += "save at "
+		num = get_imm(1, 3)
+		decoded += "(" + num + ")\t"
+    when 0xB
+		decoded += "load at "
+		num = get_imm(1, 3)
+		decoded += "(" + num + ")\t"
+    when 0xC
+		decoded += "pop to lower\t"
+    when 0xD
+		decoded += "shl\t"
+    when 0xE
+		decoded += "cmp\t"
+    when 0xF
+        decoded += "shuffle\t"
+    else
+        puts "Unhandled handler!"
+    end
+    
+    puts "#{decoded}"
+    
+
+	#decoded += stck_dmp 
 end
 
 def start_32b

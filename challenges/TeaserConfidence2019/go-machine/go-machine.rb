@@ -12,6 +12,9 @@ include Metasm
 require 'pp'
 
 @i = 0
+@QWORD=8
+@offset_sp_vm = 0x1398
+@offset_top_vm = 0x13b0
 
 def bin_to_hex(s)
     s.each_byte.map { |b| b.to_s(16).rjust(2,'0') }.join
@@ -30,6 +33,24 @@ def get_imm(start, stop)
     val.to_i().to_s(16)
 end
 
+def Qword(s)
+    s.unpack('Q*')[0]
+end
+
+def dump_stack
+    rsp = @dbg.get_reg_value("rsp")
+    stack_vm_addr = Qword(@dbg.memory[rsp+@offset_sp_vm,@QWORD])
+    stack_vm_top = Qword(@dbg.memory[rsp+@offset_top_vm,@QWORD])
+    dump = '('
+    (0..stack_vm_top).each do |i|
+      curdump = Qword(@dbg.memory[stack_vm_addr+i*@QWORD, @QWORD])
+      dump += "0x#{curdump.to_s(16)} |"
+    end
+    dump += ')'
+    
+    dump
+end
+
 def dumpHandlers
     stack_p = @dbg.get_reg_value("rsp")
     handler_str = @dbg.memory[stack_p + 0x48,16]
@@ -41,55 +62,54 @@ def dumpHandlers
     puts "handlet_str:\t#{handler_str}"
     puts "index:\t#{index}"
 
-	#stck_dmp = dump_stack()
+	  stck_dmp = dump_stack()
     decoded = ''
     case index
-	when 0
-		decoded += "sub\t"
-    when 1
-		decoded += "add\t"
-    when 2
-		decoded += "neg\t"
-    when 3
-		decoded += "mul\t"
-    when 4
-		decoded += "mod\t"
-    when 5
-		decoded += "push "
-		num = get_imm(1, 0x15)
-		decoded += "(" + num + ")\t"
-    when 6
-		decoded += "pop(ignore)\t"
-    when 7
-		decoded += "read_input\t"
-    when 8
-		decoded += "print_output\t"
-    when 9
-		decoded = "dup\t"
-    when 0xA
-		decoded += "save at "
-		num = get_imm(1, 3)
-		decoded += "(" + num + ")\t"
-    when 0xB
-		decoded += "load at "
-		num = get_imm(1, 3)
-		decoded += "(" + num + ")\t"
-    when 0xC
-		decoded += "pop to lower\t"
-    when 0xD
-		decoded += "shl\t"
-    when 0xE
-		decoded += "cmp\t"
-    when 0xF
+      when 0
+        decoded += "sub\t"
+      when 1
+        decoded += "add\t"
+      when 2
+        decoded += "neg\t"
+      when 3
+        decoded += "mul\t"
+      when 4
+        decoded += "mod\t"
+      when 5
+        decoded += "push "
+        num = get_imm(1, 0x15)
+        decoded += "(0x" + num + ")\t"
+      when 6
+        decoded += "pop(ignore)\t"
+      when 7
+        decoded += "read_input\t"
+      when 8
+        decoded += "print_output\t"
+      when 9
+        decoded = "dup\t"
+      when 0xA
+        decoded += "save at "
+        num = get_imm(1, 3)
+        decoded += "(0x" + num + ")\t"
+      when 0xB
+        decoded += "load at "
+        num = get_imm(1, 3)
+        decoded += "(0x" + num + ")\t"
+      when 0xC
+        decoded += "pop to lower\t"
+      when 0xD
+        decoded += "shl\t"
+      when 0xE
+        decoded += "cmp\t"
+      when 0xF
         decoded += "shuffle\t"
-    else
-        puts "Unhandled handler!"
+      else
+          puts "Unhandled handler!"
     end
+
+    decoded += stck_dmp
     
     puts "#{decoded}"
-    
-
-	#decoded += stck_dmp 
 end
 
 def start_32b

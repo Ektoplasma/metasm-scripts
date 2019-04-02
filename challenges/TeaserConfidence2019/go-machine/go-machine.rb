@@ -10,11 +10,14 @@
 require 'metasm'
 include Metasm
 require 'pp'
+require 'time'
 
 @i = 0
 @QWORD=8
 @offset_sp_vm = 0x1398
 @offset_top_vm = 0x13b0
+
+@f = File.open("trace_#{Time.now.to_i}.s",'w')
 
 def bin_to_hex(s)
     s.each_byte.map { |b| b.to_s(16).rjust(2,'0') }.join
@@ -108,8 +111,8 @@ def dumpHandlers
     end
 
     decoded += stck_dmp
-    
-    puts "#{decoded}"
+    @f.write("#{decoded}")
+    @f.write("\n")
 end
 
 def start_32b
@@ -124,9 +127,9 @@ def debugloop
     @dbg.callback_exception = lambda{ |e| start_32b()}
     
     @dbg.run_forever
+    @f.close
     puts 'done'
     
-	
 end
 
 
